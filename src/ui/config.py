@@ -1,20 +1,22 @@
 import json
 import streamlit as st
 from google.oauth2.service_account import Credentials
+import os
 
 # ================================================================
 # 🔐 CONFIGURACIÓN DE CREDENCIALES Y SCOPES (segura y unificada)
 # ================================================================
 def get_google_credentials():
-    """
-    Retorna credenciales y scopes de Google.
-    - Si está en Streamlit Cloud, lee desde st.secrets["gcp_credentials"].
-    - Si está local, usa el archivo credentials.json.
-    """
     SCOPES = [
         "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/spreadsheets.readonly"
     ]
+
+    # 🔧 Forzar modo local
+    if os.path.exists("credentials.json"):
+        creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+        st.warning("⚠️ Usando credenciales locales (credentials.json)")
+        return creds, SCOPES
 
     # --- Modo Streamlit Cloud ---
     if "gcp_credentials" in st.secrets:
@@ -28,11 +30,5 @@ def get_google_credentials():
             st.error(f"❌ Error leyendo credenciales desde st.secrets: {e}")
             raise
 
-    # --- Modo local (solo si existe credentials.json) ---
-    try:
-        creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
-        st.warning("⚠️ Usando credenciales locales (credentials.json)")
-        return creds, SCOPES
-    except FileNotFoundError:
-        st.error("❌ No se encontraron credenciales en st.secrets ni en credentials.json")
-        raise
+    st.error("❌ No se encontraron credenciales válidas")
+    raise FileNotFoundError
