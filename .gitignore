@@ -1,0 +1,11 @@
+# Entorno virtual
+venv/
+__pycache__/
+*.pyc
+
+# Credenciales y secretos
+credentials.json
+.streamlit/secrets.toml
+
+# Archivos temporales
+/tmp/
