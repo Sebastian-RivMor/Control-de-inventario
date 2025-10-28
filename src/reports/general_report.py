@@ -109,11 +109,21 @@ def mostrar_reporte_general():
     st.markdown("---")
 
     # --- Generar PDF ---
+    def fig_to_png_bytes(fig):
+        try:
+            img_bytes = BytesIO()
+            fig.write_image(img_bytes, format="png")
+            img_bytes.seek(0)
+            return img_bytes
+        except Exception:
+            return None
+    eri_img = fig_to_png_bytes(fig_eri) if fig_eri else None
+    eru_img = fig_to_png_bytes(fig_eru) if fig_eru else None
     if st.button("📥 Generar reporte en PDF"):
         pdf_buffer = generar_pdf(
             almacen_actual=almacen_actual,
-            fig_eri=fig_eri,
-            fig_eru=fig_eru,
+            fig_eri=eri_img,
+            fig_eru=eru_img,
             sugerencia_eri=sugerencia_eri,
             sugerencia_eru=sugerencia_eru,
             met_eri=met_eri,
@@ -218,13 +228,14 @@ def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru
             return flow
         try:
             img_bytes = BytesIO()
-            # Preferir to_image si está disponible; de lo contrario pio.write_image
+            # Preferir to_image si está disponible
             if hasattr(fig, "to_image"):
                 img = fig.to_image(format="png", width=900, height=520, scale=1)
                 img_bytes.write(img)
                 img_bytes.seek(0)
             else:
-                pio.write_image(fig, img_bytes, format="png", width=900, height=520, scale=1)
+                if isinstance(fig_eri, BytesIO):
+                    elements.append(Image(fig_eri, width=5.9*inch, height=3.4*inch))
                 img_bytes.seek(0)
 
             flow.append(Image(img_bytes, width=5.9*inch, height=3.4*inch))  # respeta márgenes
