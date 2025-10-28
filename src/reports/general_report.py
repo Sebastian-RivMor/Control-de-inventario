@@ -1,4 +1,6 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import base64
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
@@ -10,9 +12,68 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from datetime import datetime
-import plotly.io as pio
+import plotly.graph_objects as go # Añadido para la verificación de tipo
 
+# ===============================
+# GENERAR IMAGEN DEL GRÁFICO DESDE PYTHON (SERVIDOR) - SOLUCIÓN MÁS CONFIABLE
+# ===============================
+def generar_imagen_grafico(fig, width=900, height=520, scale=1):
+    """Genera una imagen PNG del gráfico Plotly usando kaleido del lado del servidor."""
+    if fig is None:
+        return None
+    try:
+        img_bytes = fig.to_image(format="png", width=width, height=height, scale=scale)
+        return BytesIO(img_bytes)
+    except Exception as e:
+        st.error(f"Error al generar la imagen del gráfico con kaleido: {e}")
+        # Opcional: intentar alternativa JS si kaleido falla
+        # return capturar_grafico_js(fig, key) # Descomentar si se quiere intentar JS como fallback
+        return None
 
+# ===============================
+# CAPTURAR GRÁFICO DESDE FRONTEND JS (OPCIONAL, COMO FALLBACK)
+# ===============================
+# ===============================
+# CAPTURAR GRÁFICO DESDE FRONTEND JS (OPCIONAL, COMO FALLBACK)
+# ===============================
+def capturar_grafico_js(fig, key):
+    """Renderiza el gráfico en el navegador y devuelve la imagen base64 generada por Plotly.js"""
+    if fig is None:
+        return None
+    html_str = f"""
+    <html>
+      <head>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> <!-- Corregido el espacio -->
+      </head>
+      <body>
+        <div id='grafico_{key}' style='width:800px;height:500px;'></div>
+        <script>
+          var fig = {fig.to_json()};
+          Plotly.newPlot('grafico_{key}', fig.data, fig.layout).then(() => {{
+              Plotly.toImage('grafico_{key}', {{format:'png', width:900, height:520}})
+              .then(function(url){{
+                  const base64 = url.split(',')[1];
+                  // Envía el valor al backend de Streamlit
+                  window.parent.postMessage({{
+                      type: 'streamlit:setComponentValue',
+                      value: base64,
+                      key: '{key}'
+                  }}, '*');
+              }});
+          }});
+        </script>
+      </body>
+    </html>
+    """
+    # components.html no puede devolver directamente el valor de JS de forma síncrona
+    # Se usa para renderizar y disparar la captura
+    # REMOVIDO: key=f"componente_{key}"
+    components.html(html_str, height=520)
+    return None # No devuelve el valor aquí
+
+# ===============================
+# SECCIÓN PRINCIPAL
+# ===============================
 def mostrar_reporte_general():
     """Muestra los gráficos ERI y ERU con métricas, sugerencias y opción de descarga PDF."""
     st.markdown("---")
@@ -55,7 +116,14 @@ def mostrar_reporte_general():
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 📊 Gráfico ERI")
-        st.plotly_chart(fig_eri, config={"displaylogo": False, "responsive": True})
+        # Mostrar el gráfico en Streamlit (esto no es para PDF)
+        if fig_eri:
+             # Verifica que sea un objeto plotly Figure
+            if isinstance(fig_eri, go.Figure):
+                st.plotly_chart(fig_eri, use_container_width=True)
+            else:
+                st.warning("El gráfico ERI no es un objeto Plotly válido.")
+        # ELIMINADO: base64_eri = capturar_grafico_js(fig_eri, key="grafico_eri") # Renderiza JS para captura futura (opcional si kaleido funciona)
         sugerencia_eri = st.text_area(
             "✏️ Observaciones sobre ERI:",
             key=f"sugerencia_eri_{almacen_actual}",
@@ -65,7 +133,13 @@ def mostrar_reporte_general():
 
     with col2:
         st.markdown("### 📊 Gráfico ERU")
-        st.plotly_chart(fig_eru, config={"displaylogo": False, "responsive": True})
+        # Mostrar el gráfico en Streamlit (esto no es para PDF)
+        if fig_eru:
+            if isinstance(fig_eru, go.Figure):
+                st.plotly_chart(fig_eru, use_container_width=True)
+            else:
+                 st.warning("El gráfico ERU no es un objeto Plotly válido.")
+        # ELIMINADO: base64_eru = capturar_grafico_js(fig_eru, key="grafico_eru") # Renderiza JS para captura futura (opcional si kaleido funciona)
         sugerencia_eru = st.text_area(
             "✏️ Observaciones sobre ERU:",
             key=f"sugerencia_eru_{almacen_actual}",
@@ -75,35 +149,56 @@ def mostrar_reporte_general():
 
     st.markdown("---")
 
-    # --- Generar PDF ---
+    # --- Botón para Generar PDF ---
+    # Las imágenes para el PDF se generan ahora DENTRO de la función de generación,
+    # usando kaleido directamente desde los objetos fig_eri y fig_eru originales.
     if st.button("📥 Generar reporte en PDF"):
+        # Generar las imágenes directamente aquí, antes de llamar a generar_pdf
+        eri_img_bytes = generar_imagen_grafico(fig_eri)
+        eru_img_bytes = generar_imagen_grafico(fig_eru)
+
+        # Verificar si las imágenes se generaron correctamente
+        if (fig_eri is not None and eri_img_bytes is None) or (fig_eru is not None and eru_img_bytes is None):
+             st.error("No se pudieron generar las imágenes de los gráficos para el PDF.")
+             return # Detener la ejecución si falla
+
         pdf_buffer = generar_pdf(
             almacen_actual=almacen_actual,
-            fig_eri=fig_eri,
-            fig_eru=fig_eru,
+            eri_img=eri_img_bytes, # Pasa BytesIO directamente
+            eru_img=eru_img_bytes, # Pasa BytesIO directamente
             sugerencia_eri=sugerencia_eri,
             sugerencia_eru=sugerencia_eru,
             met_eri=met_eri,
             met_eru=met_eru
         )
 
-        st.download_button(
-            label="⬇️ Descargar archivo PDF",
-            data=pdf_buffer,
-            file_name=f"Reporte_{almacen_actual}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-            mime="application/pdf"
-        )
+        if pdf_buffer:
+            st.download_button(
+                label="⬇️ Descargar archivo PDF",
+                data=pdf_buffer.getvalue(), # Usar getvalue() para obtener los bytes del buffer
+                file_name=f"Reporte_{almacen_actual}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.error("Ocurrió un error al generar el PDF.")
 
+# ===============================
+# GENERACIÓN DE PDF
+# ===============================
+def generar_pdf(almacen_actual, eri_img, eru_img, sugerencia_eri, sugerencia_eru, met_eri, met_eru):
+    """Genera PDF con encabezado, métricas y gráficos (usando imágenes generadas del lado del servidor)."""
+    if eri_img is None and eru_img is None:
+         st.error("No se proporcionaron imágenes para el PDF.")
+         return None # Devolver None si no hay imágenes válidas
 
-def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru, met_eri, met_eru):
-    """Genera un PDF minimalista B/N con métricas, gráficos y observaciones (sin Kaleido)."""
     buffer = BytesIO()
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="TitleCenter", parent=styles["Title"], alignment=1, fontSize=18))
     styles.add(ParagraphStyle(name="H2", parent=styles["Heading2"], fontSize=12, leading=14, spaceBefore=10))
-    styles.add(ParagraphStyle(name="Small", parent=styles["Normal"], fontSize=9, textColor=colors.black))
-    styles.add(ParagraphStyle(name="Label", parent=styles["Normal"], fontSize=10, textColor=colors.black, leading=14))
+    styles.add(ParagraphStyle(name="Small", parent=styles["Normal"], fontSize=9))
+    styles.add(ParagraphStyle(name="Label", parent=styles["Normal"], fontSize=10, leading=14))
 
+    # --- Header & Footer ---
     def _header_footer(c, doc):
         c.saveState()
         top_y = A4[1] - 36
@@ -119,10 +214,10 @@ def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru
         c.drawRightString(A4[0] - 36, bottom_y, f"Página {doc.page}")
         c.restoreState()
 
-    left, right, top, bottom = 36, 36, 60, 48
-    frame = Frame(left, bottom, A4[0] - left - right, A4[1] - top - bottom, id="normal")
-    doc = BaseDocTemplate(buffer, pagesize=A4, leftMargin=left, rightMargin=right, topMargin=top, bottomMargin=bottom)
-    doc.addPageTemplates(PageTemplate(id="withHF", frames=[frame], onPage=_header_footer))
+    # --- Documento ---
+    doc = BaseDocTemplate(buffer, pagesize=A4)
+    frame = Frame(36, 48, A4[0]-72, A4[1]-108, id="normal")
+    doc.addPageTemplates(PageTemplate(id="main", frames=[frame], onPage=_header_footer))
 
     elements = []
     elements.append(Paragraph("Reporte ERI & ERU", styles["TitleCenter"]))
@@ -144,36 +239,32 @@ def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru
     ]))
     elements.append(Paragraph("1. Métricas generales", styles["H2"]))
     elements.append(tbl)
-    elements.append(Spacer(1, 16))
+    elements.append(Spacer(1, 20))
 
-    # --- Conversión robusta de figuras a imagen ---
-    def plotly_to_image(fig):
-        try:
-            img_bytes = BytesIO(fig.to_image(format="png", width=900, height=520, scale=1))
-            img_bytes.seek(0)
-            return img_bytes
-        except Exception:
-            return None
-
-    # ERI
+    # --- Gráfico ERI ---
     elements.append(Paragraph("2. Gráfico ERI", styles["H2"]))
-    eri_img = plotly_to_image(fig_eri)
     if eri_img:
+        # Image necesita un path o un objeto BytesIO
+        # Asegurarse de que la imagen esté en la posición 0 antes de usarla
+        eri_img.seek(0)
         elements.append(Image(eri_img, width=5.9*inch, height=3.4*inch))
     else:
-        elements.append(Paragraph("<i>No fue posible convertir el gráfico ERI a imagen.</i>", styles["Small"]))
+        elements.append(Paragraph("<i>No se pudo capturar el gráfico ERI.</i>", styles["Small"]))
     if sugerencia_eri:
         elements.append(Paragraph("Observaciones ERI", styles["Label"]))
         elements.append(Paragraph(sugerencia_eri.replace("\n", "<br/>"), styles["Small"]))
-    elements.append(PageBreak())
 
-    # ERU
+    # elements.append(PageBreak()) # Descomentar si se quiere página separada
+
+    # --- Gráfico ERU ---
     elements.append(Paragraph("3. Gráfico ERU", styles["H2"]))
-    eru_img = plotly_to_image(fig_eru)
     if eru_img:
+        # Image necesita un path o un objeto BytesIO
+        # Asegurarse de que la imagen esté en la posición 0 antes de usarla
+        eru_img.seek(0)
         elements.append(Image(eru_img, width=5.9*inch, height=3.4*inch))
     else:
-        elements.append(Paragraph("<i>No fue posible convertir el gráfico ERU a imagen.</i>", styles["Small"]))
+        elements.append(Paragraph("<i>No se pudo capturar el gráfico ERU.</i>", styles["Small"]))
     if sugerencia_eru:
         elements.append(Paragraph("Observaciones ERU", styles["Label"]))
         elements.append(Paragraph(sugerencia_eru.replace("\n", "<br/>"), styles["Small"]))
@@ -184,11 +275,20 @@ def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru
         styles["Small"]
     ))
 
-    doc.title = f"Reporte ERI & ERU - {almacen_actual}"
-    doc.author = "Sistema ERI-ERU (Inventario IQFarma)"
-    doc.subject = "Resultados generales y hallazgos ERI & ERU"
-    doc.creator = "Streamlit · ReportLab"
+    try:
+        doc.build(elements)
+        buffer.seek(0) # Importante: reiniciar la posición del buffer antes de devolverlo
+        return buffer
+    except Exception as e:
+        st.error(f"Error al construir el PDF: {e}")
+        return None
 
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
+
+# --- Para probar la función ---
+# Asegúrate de tener fig_eri, fig_eru, metricas, etc. en session_state
+# st.session_state["almacen_actual"] = "Test_Almacen"
+# st.session_state["metricas_eri"] = {"exactitud": 95.5, "ok": 95, "error": 5}
+# st.session_state["metricas_eru"] = {"exactitud": 90.0, "ok": 90, "error": 10}
+# fig_test = go.Figure(data=go.Bar(x=['A', 'B', 'C'], y=[1, 3, 2]))
+# st.session_state["fig_eri"] = fig_test
+# st.session_state["fig_eru"] = fig_test
