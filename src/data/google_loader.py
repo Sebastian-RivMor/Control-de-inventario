@@ -17,18 +17,20 @@ def get_credentials_path():
     """
     Retorna ruta a credentials.json.
     - En local: usa credentials.json del proyecto.
-    - En Streamlit Cloud: escribe st.secrets["gcp_credentials"] a /tmp/credentials.json
+    - En Render: crea temporal desde variable de entorno GCP_CREDENTIALS.
     """
     if os.path.exists("credentials.json"):
         return "credentials.json"
-    else:
-        creds_path = "/tmp/credentials.json"
-        # En secrets debe estar el JSON completo como string
-        if "gcp_credentials" not in st.secrets:
-            raise RuntimeError("No se encontró 'gcp_credentials' en st.secrets.")
-        with open(creds_path, "w") as f:
-            f.write(st.secrets["gcp_credentials"])
-        return creds_path
+
+    creds_path = "/tmp/credentials.json"
+    creds_env = os.getenv("GCP_CREDENTIALS")
+
+    if not creds_env:
+        raise RuntimeError("No se encontró la variable de entorno 'GCP_CREDENTIALS'.")
+
+    with open(creds_path, "w") as f:
+        f.write(creds_env)
+    return creds_path
 
 
 def get_google_credentials():
