@@ -13,6 +13,12 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
+import plotly.io as pio
+pio.renderers.default = "svg"
+pio.kaleido.scope.default_format = "png"
+pio.kaleido.scope.default_width = 900
+pio.kaleido.scope.default_height = 520
+pio.kaleido.scope.default_scale = 1
 
 
 def mostrar_reporte_general():
@@ -121,61 +127,6 @@ def mostrar_reporte_general():
             mime="application/pdf"
         )
 
-
-# def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru, met_eri, met_eru):
-#     """Genera el PDF completo con métricas, gráficos y observaciones."""
-#     buffer = BytesIO()
-#     doc = SimpleDocTemplate(buffer, pagesize=A4)
-#     elements = []
-#     styles = getSampleStyleSheet()
-
-#     # --- Título principal ---
-#     elements.append(Paragraph(f"<b>Reporte ERI & ERU - Almacén: {almacen_actual}</b>", styles["Title"]))
-#     elements.append(Paragraph(f"Generado el {datetime.now().strftime('%d/%m/%Y - %H:%M:%S')}", styles["Normal"]))
-#     elements.append(Spacer(1, 12))
-
-#     # --- Tabla de métricas ---
-#     data = [["Métrica", "ERI", "ERU"]]
-#     data.append(["Exactitud (%)", f"{met_eri.get('exactitud', 0):.2f}", f"{met_eru.get('exactitud', 0):.2f}"])
-#     data.append(["Correctos / OK", met_eri.get("ok", 0), met_eru.get("ok", 0)])
-#     data.append(["Errores / Incorrectos", met_eri.get("error", 0), met_eru.get("error", 0)])
-
-#     table = Table(data, hAlign='LEFT')
-#     table.setStyle(TableStyle([
-#         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4F46E5")),
-#         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-#         ("GRID", (0, 0), (-1, -1), 0.5, colors.gray),
-#         ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-#         ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke)
-#     ]))
-#     elements.append(table)
-#     elements.append(Spacer(1, 20))
-
-#     # --- Exportar figuras Plotly ---
-#     if fig_eri:
-#         img_eri = BytesIO()
-#         pio.write_image(fig_eri, img_eri, format="png", width=600, height=400)
-#         img_eri.seek(0)
-#         elements.append(Paragraph("<b>Gráfico ERI</b>", styles["Heading2"]))
-#         elements.append(Image(img_eri, width=5.5*inch, height=3.5*inch))
-#         if sugerencia_eri:
-#             elements.append(Paragraph(f"<b>Observaciones ERI:</b> {sugerencia_eri}", styles["Normal"]))
-#         elements.append(Spacer(1, 24))
-
-#     if fig_eru:
-#         img_eru = BytesIO()
-#         pio.write_image(fig_eru, img_eru, format="png", width=600, height=400)
-#         img_eru.seek(0)
-#         elements.append(Paragraph("<b>Gráfico ERU</b>", styles["Heading2"]))
-#         elements.append(Image(img_eru, width=5.5*inch, height=3.5*inch))
-#         if sugerencia_eru:
-#             elements.append(Paragraph(f"<b>Observaciones ERU:</b> {sugerencia_eru}", styles["Normal"]))
-#         elements.append(Spacer(1, 24))
-
-#     # --- Generar documento ---
-#     doc.build(elements)
-#     buffer.seek(0)
-#     return buffer
 def generar_pdf(almacen_actual, fig_eri, fig_eru, sugerencia_eri, sugerencia_eru, met_eri, met_eru):
     """Genera un PDF minimalista (B/N) con encabezado, pie, métricas, gráficos y observaciones."""
     
