@@ -20,8 +20,33 @@ def seleccionar_almacen(df_raw):
 
     # Seleccionar almacén
     almacenes = sorted(df_raw["ALMACEN_NOMBRE"].dropna().unique())
+    
     almacen_seleccionado = st.selectbox("📍 Seleccionar Almacén", almacenes)
+    # --- Detección y reinicio al cambiar de almacén ---
+    almacen_anterior = st.session_state.get("almacen_actual")
 
+    # Si el almacén cambió (y ya había uno previo), reiniciar estados una sola vez
+    if almacen_anterior and almacen_anterior != almacen_seleccionado:
+        # Reiniciar variables de sesión
+        st.session_state["escaneos_eri"] = []
+        st.session_state["escaneos_eru"] = []
+        st.session_state.pop("fig_eri", None)
+        st.session_state.pop("fig_eru", None)
+        st.session_state["mensaje_escaneo"] = ""
+
+        # Actualizar el almacén actual antes del rerun
+        st.session_state["almacen_actual"] = almacen_seleccionado
+
+        # Mostrar mensaje y recargar
+        st.warning(f"🔄 Se cambió el almacén a **{almacen_seleccionado}**. Todo ha sido reiniciado.")
+        st.rerun()
+    else:
+        # Guardar almacén actual si es la primera vez
+        st.session_state["almacen_actual"] = almacen_seleccionado
+
+
+    # Guardar el almacén actual
+    st.session_state["almacen_actual"] = almacen_seleccionado
     # Filtrar por almacén
     df_filtrado = df_raw[df_raw["ALMACEN_NOMBRE"] == almacen_seleccionado].copy()
 
