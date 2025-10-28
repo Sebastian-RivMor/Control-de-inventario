@@ -119,16 +119,23 @@ def mostrar_reporte_general():
             return None
     eri_img = fig_to_png_bytes(fig_eri) if fig_eri else None
     eru_img = fig_to_png_bytes(fig_eru) if fig_eru else None
+    # Guardar figuras y métricas en session_state para exportar correctamente
+    st.session_state["fig_eri_export"] = st.session_state.get("fig_eri")
+    st.session_state["fig_eru_export"] = st.session_state.get("fig_eru")
+    st.session_state["metricas_eri_export"] = st.session_state.get("metricas_eri", {})
+    st.session_state["metricas_eru_export"] = st.session_state.get("metricas_eru", {})
+
     if st.button("📥 Generar reporte en PDF"):
         pdf_buffer = generar_pdf(
             almacen_actual=almacen_actual,
-            fig_eri=eri_img,
-            fig_eru=eru_img,
+            fig_eri=st.session_state.get("fig_eri_export"),
+            fig_eru=st.session_state.get("fig_eru_export"),
             sugerencia_eri=sugerencia_eri,
             sugerencia_eru=sugerencia_eru,
-            met_eri=met_eri,
-            met_eru=met_eru
+            met_eri=st.session_state.get("metricas_eri_export", {}),
+            met_eru=st.session_state.get("metricas_eru_export", {})
         )
+
 
         st.download_button(
             label="⬇️ Descargar archivo PDF",
