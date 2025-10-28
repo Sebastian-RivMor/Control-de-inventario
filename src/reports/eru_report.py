@@ -75,7 +75,7 @@ def mostrar_reporte_eru(stock_teorico_eri):
 
             # Comparación
             if ubicacion_escaneada_limpia in ubicaciones_teoricas_limpias:
-                return "OK (Ubicación Correcta)"
+                return "Ubicación Correcta"
             else:
                 return "Ubicación Incorrecta"
 
@@ -87,7 +87,7 @@ def mostrar_reporte_eru(stock_teorico_eri):
 
         # --- Cálculo de exactitud ERU ---
         total_escaneos_eru = len(merged_eru_temp)
-        items_ubicacion_correcta = conteo_estado_eru.get("OK (Ubicación Correcta)", 0)
+        items_ubicacion_correcta = conteo_estado_eru.get("Ubicación Correcta", 0)
         items_ubicacion_incorrecta = (
             conteo_estado_eru.get("Ubicación Incorrecta", 0)
             + conteo_estado_eru.get("Código Escaneado Inválido", 0)
@@ -103,18 +103,41 @@ def mostrar_reporte_eru(stock_teorico_eri):
         col3.metric("Ubicaciones Incorrectas", items_ubicacion_incorrecta)
 
         # --- Gráfico ERU ---
+        df_pie_eru = pd.DataFrame({
+            "estado": conteo_estado_eru.index,
+            "cantidad": conteo_estado_eru.values
+        })
+
         fig_eru = px.pie(
-            names=conteo_estado_eru.index,
-            values=conteo_estado_eru.values,
+            df_pie_eru,
+            names="estado",
+            values="cantidad",
             title="Distribución ERU",
+            color="estado",
             color_discrete_map={
-                "OK (Ubicación Correcta)": "green",
-                "Ubicación Incorrecta": "red",
-                "Código Escaneado Inválido": "orange",
-                "Producto/Referencia No Encontrado": "orange"
+                "Ubicación Correcta": "#22c55e",  # verde
+                "Ubicación Incorrecta": "#ef4444",     # rojo
+                "Código Escaneado Inválido": "#f59e0b",
+                "Producto/Referencia No Encontrado": "#f59e0b"
             }
         )
-        st.plotly_chart(fig_eru, use_container_width=True)
+        fig_eru.update_layout(
+            template="plotly_white",
+            legend_title_text="Estado",
+            paper_bgcolor="white",
+            plot_bgcolor="white"
+        )
+        st.plotly_chart(
+            fig_eru,
+            config={
+                "displaylogo": False,
+                "responsive": True,
+                "autosize": True,
+                "style": {"width": "100%"}
+            },
+            key=f"fig_eru_panel_{st.session_state.get('almacen_actual','NA')}"
+        )
+
 
         # --- Tabla detallada ERU ---
         st.dataframe(
@@ -125,7 +148,7 @@ def mostrar_reporte_eru(stock_teorico_eri):
                 "UBICACION_NOMBRE",
                 "estado_ubicacion"
             ]],
-            use_container_width=True
+            width='stretch'
         )
 
         # --- Exportación CSV (opcional) ---
@@ -133,4 +156,9 @@ def mostrar_reporte_eru(stock_teorico_eri):
 
         # Guardar figura globalmente para usar en el reporte general
         st.session_state["fig_eru"] = fig_eru
-
+        st.session_state["fig_eru_almacen"] = st.session_state.get("almacen_actual")
+        st.session_state["metricas_eru"] = {
+            "exactitud": exactitud_eru,
+            "ok": items_ubicacion_correcta,
+            "error": items_ubicacion_incorrecta
+        }

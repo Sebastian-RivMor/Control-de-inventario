@@ -32,7 +32,7 @@ def mostrar_reporte_eri(stock_teorico_eri):
 
         # --- Estado por ítem ---
         merged_eri["estado"] = merged_eri["diferencia"].apply(
-            lambda x: "OK" if x == 0 else ("Sobrante" if x > 0 else "Faltante")
+            lambda x: "Completo" if x == 0 else ("Sobrante" if x > 0 else "Faltante")
         )
 
         # --- Exactitud ERI ---
@@ -44,7 +44,7 @@ def mostrar_reporte_eri(stock_teorico_eri):
         st.subheader("📈 Reporte ERI")
         col1, col2, col3 = st.columns(3)
         col1.metric("Exactitud ERI", f"{exactitud_eri:.2f}%")
-        col2.metric("Ítems Correctos ERI", len(merged_eri[merged_eri["estado"] == "OK"]))
+        col2.metric("Ítems Correctos ERI", len(merged_eri[merged_eri["estado"] == "Completo"]))
         col3.metric("Ítems con Error ERI", items_con_error_eri)
 
         # --- Gráfico ERI ---
@@ -52,9 +52,32 @@ def mostrar_reporte_eri(stock_teorico_eri):
             merged_eri,
             names="estado",
             title="Distribución ERI",
-            color_discrete_map={"OK": "green", "Faltante": "red", "Sobrante": "orange"}
+            color="estado",
+            color_discrete_map={
+                "Completo": "#22c55e",         # verde
+                "Faltante": "#ef4444",   # rojo
+                "Sobrante": "#f59e0b"    # naranja
+            }
         )
-        st.plotly_chart(fig_eri, use_container_width=True)
+        fig_eri.update_layout(
+            template="plotly_white",
+            legend_title_text="Estado",
+            paper_bgcolor="white",
+            plot_bgcolor="white"
+        )
+
+        st.plotly_chart(
+            fig_eri,
+            config={
+                "displaylogo": False,
+                "responsive": True,
+                "autosize": True,
+                "style": {"width": "100%"}
+            },
+            key=f"fig_eri_panel_{st.session_state.get('almacen_actual','NA')}"
+        )
+
+
 
         # --- Tabla detallada ERI ---
         tabla_detalle_eri = merged_eri.rename(columns={
@@ -74,7 +97,7 @@ def mostrar_reporte_eri(stock_teorico_eri):
                 "estado_conteo",
                 "ubicaciones_teoricas"
             ]],
-            use_container_width=True
+            width='stretch'
         )
 
         # --- Exportación CSV (opcional) ---
@@ -82,4 +105,9 @@ def mostrar_reporte_eri(stock_teorico_eri):
 
         # Guardar figura globalmente para usar en reporte general
         st.session_state["fig_eri"] = fig_eri
-
+        st.session_state["fig_eri_almacen"] = st.session_state.get("almacen_actual")
+        st.session_state["metricas_eri"] = {
+            "exactitud": exactitud_eri,
+            "Completo": len(merged_eri[merged_eri["estado"] == "Completo"]),
+            "error": items_con_error_eri
+        }

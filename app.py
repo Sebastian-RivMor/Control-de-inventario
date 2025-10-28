@@ -1,6 +1,9 @@
 # app.py
 import os, sys
 import streamlit as st
+import plotly.io as pio
+
+pio.templates.default = "plotly_white"
 
 # === Fix de importaciones si Streamlit no detecta src/ ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
