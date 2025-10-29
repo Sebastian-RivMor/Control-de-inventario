@@ -95,7 +95,13 @@ def mostrar_reporte_general():
     # =====================================================
     st.markdown("### 📊 Distribución ERI")
     if fig_eri:
-        st.plotly_chart(fig_eri, use_container_width=True, config={"displaylogo": False})
+        st.plotly_chart(
+            fig_eri,
+            use_container_width=True,
+            config={"displaylogo": False},
+            key=f"plot_eri_{st.session_state.get('almacen_actual','NA')}"
+        )
+
     else:
         st.warning("⚠️ No se encontró gráfico ERI. Genera el reporte ERI primero.")
 
@@ -113,7 +119,13 @@ def mostrar_reporte_general():
     # =====================================================
     st.markdown("### 📊 Distribución ERU")
     if fig_eru:
-        st.plotly_chart(fig_eru, use_container_width=True, config={"displaylogo": False})
+        st.plotly_chart(
+            fig_eru,
+            use_container_width=True,
+            config={"displaylogo": False},
+            key=f"plot_eru_{st.session_state.get('almacen_actual','NA')}"
+        )
+
     else:
         st.warning("⚠️ No se encontró gráfico ERU. Genera el reporte ERU primero.")
 
