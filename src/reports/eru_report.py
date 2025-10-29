@@ -162,3 +162,6 @@ def mostrar_reporte_eru(stock_teorico_eri):
             "ok": items_ubicacion_correcta,
             "error": items_ubicacion_incorrecta
         }
+
+        st.session_state["fig_eru"] = fig_eru
+        st.session_state["fig_eru_ready"] = True

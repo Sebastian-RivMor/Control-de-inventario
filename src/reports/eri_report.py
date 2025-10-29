@@ -108,6 +108,11 @@ def mostrar_reporte_eri(stock_teorico_eri):
         st.session_state["fig_eri_almacen"] = st.session_state.get("almacen_actual")
         st.session_state["metricas_eri"] = {
             "exactitud": exactitud_eri,
-            "Completo": len(merged_eri[merged_eri["estado"] == "Completo"]),
+            "ok": len(merged_eri[merged_eri["estado"] == "Completo"]),
             "error": items_con_error_eri
         }
+
+        # Asegurar compatibilidad global
+        st.session_state["fig_eri"] = fig_eri
+        st.session_state["fig_eri_ready"] = True
+
