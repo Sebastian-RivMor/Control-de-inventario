@@ -94,16 +94,21 @@ def mostrar_reporte_general():
     # 📊 Sección ERI (gráfico + observaciones)
     # =====================================================
     st.markdown("### 📊 Distribución ERI")
-    if fig_eri:
-        st.plotly_chart(
-            fig_eri,
-            use_container_width=True,
-            config={"displaylogo": False},
-            key=f"plot_eri_{st.session_state.get('almacen_actual','NA')}"
-        )
 
-    else:
-        st.warning("⚠️ No se encontró gráfico ERI. Genera el reporte ERI primero.")
+    eri_container = st.container()
+    with eri_container:
+        if fig_eri:
+            try:
+                st.plotly_chart(
+                    fig_eri,
+                    use_container_width=True,
+                    config={"displaylogo": False},
+                    key="plot_eri_global"
+                )
+            except Exception:
+                st.warning("⚠️ No se pudo renderizar el gráfico ERI. Refresca la página.")
+        else:
+            st.info("No se encontró gráfico ERI (genera el reporte ERI primero).")
 
     sugerencia_eri = st.text_area(
         "✏️ Observaciones sobre ERI:",
@@ -118,16 +123,21 @@ def mostrar_reporte_general():
     # 📊 Sección ERU (gráfico + observaciones)
     # =====================================================
     st.markdown("### 📊 Distribución ERU")
-    if fig_eru:
-        st.plotly_chart(
-            fig_eru,
-            use_container_width=True,
-            config={"displaylogo": False},
-            key=f"plot_eru_{st.session_state.get('almacen_actual','NA')}"
-        )
 
-    else:
-        st.warning("⚠️ No se encontró gráfico ERU. Genera el reporte ERU primero.")
+    eru_container = st.container()
+    with eru_container:
+        if fig_eru:
+            try:
+                st.plotly_chart(
+                    fig_eru,
+                    use_container_width=True,
+                    config={"displaylogo": False},
+                    key="plot_eru_global"
+                )
+            except Exception:
+                st.warning("⚠️ No se pudo renderizar el gráfico ERU. Refresca la página.")
+        else:
+            st.info("No se encontró gráfico ERU (genera el reporte ERU primero).")
 
     sugerencia_eru = st.text_area(
         "✏️ Observaciones sobre ERU:",
@@ -135,6 +145,7 @@ def mostrar_reporte_general():
         height=100,
         placeholder="Ejemplo: Revisar ubicaciones incorrectas o productos mal escaneados..."
     )
+
 
     st.markdown("---")
 
